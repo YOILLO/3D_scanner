@@ -155,9 +155,9 @@ if __name__ == '__main__':
     #                                        num_workers=1,
     #                                        neighborhood_limits=neighborhood_limits)
 
-    width = 120
-    length = 500
-    backup_num = 0
+    width = 200
+    length = 700
+    backup_num = 288988
     mod = 1
 
     if mod:
@@ -165,24 +165,35 @@ if __name__ == '__main__':
     else:
         model = PointCloudsNN(width)
 
-    loss_func = nn.MSELoss()
-    optimizer = optim.Adam(model.parameters(), lr=0.0015)  # lr = 0.0015
+    loss_func = nn.L1Loss()
+    optimizer = optim.SGD(model.parameters(), lr=0.00001)  # lr = 0.0015
 
     trainLoss = []
+    trainLossEpoch = []
     testLoss = []
+    testLossEpoch = []
 
     step = backup_num
+    print(backup_num, backup_num - (backup_num % 5000))
 
     if backup_num > 0:
         model.load_state_dict(torch.load(f"history2/{mod}_point_cloud_model_{backup_num}_wd_{width}_{length}.mod"))
 
-        with open(f"history2/{mod}_train_loss_{backup_num}_wd_{width}_{length}.txt", "r") as lossF:
+        with open(f"history2/{mod}_train_loss_{backup_num - (backup_num % 5000)}_wd_{width}_{length}.txt", "r") as lossF:
             for line in lossF.readlines():
                 trainLoss.append(float(line.strip()))
 
-        with open(f"history2/{mod}_test_loss_{backup_num}_wd_{width}_{length}.txt", "r") as lossF:
+        with open(f"history2/{mod}_train_loss_epoch_{backup_num}_wd_{width}_{length}.txt", "r") as lossF:
+            for line in lossF.readlines():
+               trainLossEpoch.append(float(line.strip()))
+
+        with open(f"history2/{mod}_test_loss_{backup_num - (backup_num % 5000)}_wd_{width}_{length}.txt", "r") as lossF:
             for line in lossF.readlines():
                 testLoss.append(float(line.strip()))
+
+        with open(f"history2/{mod}_test_loss_epoch_{backup_num}_wd_{width}_{length}.txt", "r") as lossF:
+            for line in lossF.readlines():
+                testLossEpoch.append(float(line.strip()))
 
     # tb = SummaryWriter(comment='Run simple cnn on mnist')
     # print(model)
@@ -203,14 +214,18 @@ if __name__ == '__main__':
     # input()
     step_rel = 0
     epoch = 0
-    while step_rel + len(train_loader) < backup_num:
+    while step_rel < backup_num:
         epoch += 1
         step_rel += len(train_loader)
 
-    while epoch <= 10:
+    running_loss = 0
+    running_loss_num = 0
+
+    running_loss_epoch = 0
+    running_loss_num_epoch = 0
+
+    while epoch < 15:
         epoch += 1
-        running_loss = 0
-        running_loss_num = 0
         for src_pcd, tgt_pcd, src_feats, tgt_feats, rot, trans, correspondences, src_pcd, tgt_pcd, _ in train_loader:
             step_rel += 1
             if step_rel < backup_num:
@@ -248,7 +263,10 @@ if __name__ == '__main__':
             running_loss += loss.item()
             running_loss_num += 1
 
-            if step % 1000 == 0:
+            running_loss_epoch += loss.item()
+            running_loss_num_epoch += 1
+
+            if step % 5000 == 0:
                 test_loss = 0
                 test_loss_num = 0
 
@@ -284,14 +302,14 @@ if __name__ == '__main__':
                         data_res = torch.from_numpy(np.array([rotation[0], rotation[1], rotation[2],
                                                               trans[0][0][0], trans[0][1][0], trans[0][2][0]]))
 
-                        if not save_screen:
-                            rot_t, trans_t = result_to_arr(result)
+                        #if not save_screen:
+                            #rot_t, trans_t = result_to_arr(result)
                             #draw_point_clouds(src_pcd.numpy()[0], tgt_pcd.numpy()[0], np.array(rotation, np.float32),
                                               #np.array(trans[0], np.float32),
                                               #f"{mod}_screen_aim_{step}_{width}_{length}_{step2}")
-                            draw_point_clouds(src_pcd.numpy()[0], tgt_pcd.numpy()[0], np.array(rot_t, np.float32),
-                                              np.array(trans_t, np.float32), f"{mod}_screen_{step}_{width}_{length}_{step2}")
-                            save_screen = True
+                            #draw_point_clouds(src_pcd.numpy()[0], tgt_pcd.numpy()[0], np.array(rot_t, np.float32),
+                                              #np.array(trans_t, np.float32), f"{mod}_screen_{step}_{width}_{length}_{step2}")
+                            #save_screen = True
 
                         testsample_loss = loss_func(result, data_res)
                         test_loss += testsample_loss.item()
@@ -366,3 +384,121 @@ if __name__ == '__main__':
                                       input_names=["tmp", "point"],
                                       output_names=["transform"],
                                       do_constant_folding=True)
+
+        test_loss = 0
+        test_loss_num = 0
+
+        # Set mode withou gradient calculation
+        with torch.no_grad():
+            model.eval()
+
+            # Run validation on test dataset
+            step2 = 0
+            save_screen = False
+            print("Start testing")
+            for src_pcd, tgt_pcd, src_feats, tgt_feats, rot, trans, correspondences, src_pcd, tgt_pcd, _ in test_loader:
+                print(len(test_loader), step2)
+                step2 += 1
+                # if step2 % 6 != 0:
+                # continue
+
+                tgt_pcd, src_pcd, trans = normalize(tgt_pcd, src_pcd, trans)
+
+                if mod:
+                    while len(tgt_pcd[0]) % length:
+                        tgt_pcd = torch.cat(
+                            (tgt_pcd, torch.from_numpy(np.array([[[0.0, 0.0, 0.0]]], np.float32))), dim=1)
+
+                    while len(src_pcd[0]) % length:
+                        src_pcd = torch.cat(
+                            (src_pcd, torch.from_numpy(np.array([[[0.0, 0.0, 0.0]]], np.float32))), dim=1)
+
+                result = model.forward(src_pcd.float(), tgt_pcd.float())
+
+                rotation = rotationMatrixToEulerAngles(rot[0]) / (2 * math.pi)
+
+                data_res = torch.from_numpy(np.array([rotation[0], rotation[1], rotation[2],
+                                                      trans[0][0][0], trans[0][1][0], trans[0][2][0]]))
+
+                #if not save_screen:
+                    #rot_t, trans_t = result_to_arr(result)
+                    # draw_point_clouds(src_pcd.numpy()[0], tgt_pcd.numpy()[0], np.array(rotation, np.float32),
+                    # np.array(trans[0], np.float32),
+                    # f"{mod}_screen_aim_{step}_{width}_{length}_{step2}")
+                    #draw_point_clouds(src_pcd.numpy()[0], tgt_pcd.numpy()[0], np.array(rot_t, np.float32),
+                                      #np.array(trans_t, np.float32), f"{mod}_screen_{step}_{width}_{length}_{step2}")
+                    #save_screen = True
+
+                testsample_loss = loss_func(result, data_res)
+                test_loss += testsample_loss.item()
+                test_loss_num += 1
+
+                ps = torch.exp(result)
+
+                # top_p, top_class = ps.topk(1, dim=1)
+
+                # accuracy += accuracy_score(data_res.view(*top_class.shape).cpu(), top_class.cpu())
+
+        # Returnn train mode
+        model.train()
+
+        trainLossEpoch.append(running_loss_epoch / running_loss_num_epoch)
+        running_loss_num_epoch = 0
+        running_loss_epoch = 0
+        testLossEpoch.append(test_loss / test_loss_num)
+        # accHistory.append(accuracy / len(test_loader))
+        train_f = open(f"history2/{mod}_train_loss_epoch_{step}_wd_{width}_{length}.txt", "w")
+        for i in trainLossEpoch:
+            train_f.write(str(i))
+            train_f.write("\n")
+        train_f.close()
+
+        test_f = open(f"history2/{mod}_test_loss_epoch_{step}_wd_{width}_{length}.txt", "w")
+        for i in testLossEpoch:
+            test_f.write(str(i))
+            test_f.write("\n")
+        test_f.close()
+
+        # acc_f = open(f"history2/acc_{step}.txt", "w")
+        # for i in accHistory:
+        # acc_f.write(str(i))
+        # acc_f.write("\n")
+        # acc_f.close()
+
+        torch.save(model.state_dict(), f"history2/{mod}_point_cloud_model_{step}_wd_{width}_{length}.mod")
+        torch.onnx.export(model.final,
+                          (torch.randn(width, requires_grad=True), torch.randn(width, requires_grad=True)),
+                          f"history2/{mod}_point_cloud_model_final_{step}_wd_{width}_{length}.onnx",
+                          input_names=["src", "tgt"],
+                          output_names=["transform"],
+                          do_constant_folding=True)
+
+        if mod:
+            torch.onnx.export(model.encoder1.layer,
+                              (torch.randn(width, requires_grad=True), torch.randn((1, length, 3), requires_grad=True)),
+                              f"history2/{mod}_point_cloud_model_enc1_{step}_wd_{width}_{length}.onnx",
+                              input_names=["tmp", "point"],
+                              output_names=["transform"],
+                              do_constant_folding=True)
+
+            torch.onnx.export(model.encoder2.layer,
+                              (torch.randn(width, requires_grad=True), torch.randn((1, length, 3), requires_grad=True)),
+                              f"history2/{mod}_point_cloud_model_enc2_{step}_wd_{width}_{length}.onnx",
+                              input_names=["tmp", "point"],
+                              output_names=["transform"],
+                              do_constant_folding=True)
+
+        else:
+            torch.onnx.export(model.encoder1.layer,
+                              (torch.randn(width, requires_grad=True), torch.randn(3, requires_grad=True)),
+                              f"history2/{mod}_point_cloud_model_enc1_{step}_wd_{width}.onnx",
+                              input_names=["tmp", "point"],
+                              output_names=["transform"],
+                              do_constant_folding=True)
+
+            torch.onnx.export(model.encoder2.layer,
+                              (torch.randn(width, requires_grad=True), torch.randn(3, requires_grad=True)),
+                              f"history2/{mod}_point_cloud_model_enc2_{step}_wd_{width}.onnx",
+                              input_names=["tmp", "point"],
+                              output_names=["transform"],
+                              do_constant_folding=True)
