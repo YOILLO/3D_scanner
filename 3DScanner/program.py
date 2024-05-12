@@ -1,14 +1,15 @@
-from socket import *
+#from socket import *
 from time import *
 import pyurg
 from math import *
 from GPIO import *
+import Neural
 
 addr = ("192.168.43.200", 9090)
 
 GPIO_init()
 
-tcp_socket = socket(AF_INET,  SOCK_STREAM)
+#tcp_socket = socket(AF_INET,  SOCK_STREAM)
 
 urg = pyurg.UrgDevice()
 
@@ -19,15 +20,31 @@ if not urg.connect():
 #tcp_socket.connect(addr)
 
 motor_step = 0
+scan_num = 0
+cloud = []
+cloud_prev = []
+file = open(f"scans/{scan_num}.txt")
+neural = Neural.onnxCNN(200, 700)
 while True:
 	try:
 		print("Trying connect")
-		tcp_socket.connect(addr)
+		#tcp_socket.connect(addr)
 
 		while True:
 			if motor_step > 125:
+				file.close()
+				if len(cloud_prev):
+					file_transform = open(f"transforms/{scan_num}.txt")
+					while len(cloud) < 700:
+						cloud.append([0, 0, 0])
+					file_transform.write(neural.forward(cloud_prev, cloud))
+					file_transform.close()
+				cloud_prev = cloud
+				cloud = []
+				scan_num += 1
+				file = open(f"scans/{scan_num}.txt")
 				motor_step = 0
-				tcp_socket.send(b"STOP\n")
+				#tcp_socket.send(b"STOP\n")
 				print("STOP")
 
 			data, timestamp = urg.capture()
@@ -51,9 +68,12 @@ while True:
 				y = r * sin(angle_vert) * sin(angle_horiz)
 				z = r * cos(angle_vert)
 
+				cloud.append([x, y, z])
+
 				stt = str(int(round(x))) + " " + str(int(round(y))) + " " + str(int(round(z))) + "\n"
+				file.write(stt)
 				#print(stt)
-				tcp_socket.send(bytes(stt))
+				#tcp_socket.send(bytes(stt))
 			GPIO_step2()
 			motor_step += 1
 	except:
