@@ -96,33 +96,9 @@ if __name__ == '__main__':
     parser.add_argument('config', type=str, help='Path to the config file.')
     args = parser.parse_args()
     config = load_config(args.config)
-    config['snapshot_dir'] = 'snapshot/%s' % config['exp_dir']
-    config['tboard_dir'] = 'snapshot/%s/tensorboard' % config['exp_dir']
-    config['save_dir'] = 'snapshot/%s/checkpoints' % config['exp_dir']
     config = edict(config)
 
-    os.makedirs(config.snapshot_dir, exist_ok=True)
-    os.makedirs(config.save_dir, exist_ok=True)
-    os.makedirs(config.tboard_dir, exist_ok=True)
-    json.dump(
-        config,
-        open(os.path.join(config.snapshot_dir, 'config.json'), 'w'),
-        indent=4,
-    )
-    if config.gpu_mode:
-        config.device = torch.device('cuda')
-    else:
-        config.device = torch.device('cpu')
-
-    # backup the files
-    os.system(f'cp -r models {config.snapshot_dir}')
-    os.system(f'cp -r datasets {config.snapshot_dir}')
-    os.system(f'cp -r lib {config.snapshot_dir}')
-    shutil.copy2('main.py', config.snapshot_dir)
-
-    # model initialization
-    config.architecture = architectures[config.dataset]
-    config.model = KPFCNN(config)
+    config.device = torch.device('cuda')
 
     # create dataset and dataloader
     train_set, val_set, benchmark_set = get_datasets(config)
