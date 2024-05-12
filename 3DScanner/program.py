@@ -1,4 +1,4 @@
-#from socket import *
+from socket import *
 from time import *
 import pyurg
 from math import *
@@ -9,7 +9,7 @@ addr = ("192.168.43.200", 9090)
 
 GPIO_init()
 
-#tcp_socket = socket(AF_INET,  SOCK_STREAM)
+tcp_socket = socket(AF_INET,  SOCK_STREAM)
 
 urg = pyurg.UrgDevice()
 
@@ -17,7 +17,7 @@ if not urg.connect():
     print('Could not connect.')
     exit()
 
-#tcp_socket.connect(addr)
+tcp_socket.connect(addr)
 
 motor_step = 0
 scan_num = 0
@@ -28,7 +28,8 @@ neural = Neural.onnxCNN(200, 700)
 while True:
 	try:
 		print("Trying connect")
-		#tcp_socket.connect(addr)
+		tcp_socket.connect(addr)
+		tcp_socket.recv(1)
 
 		while True:
 			if motor_step > 125:
