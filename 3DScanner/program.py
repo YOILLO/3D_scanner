@@ -34,6 +34,7 @@ while True:
 		while True:
 			if motor_step > 125:
 				file.close()
+				sleep(30)
 				#if len(cloud_prev):
 					#file_transform = open("transforms/" + scan_num + ".txt")
 					#while len(cloud) < 700:
