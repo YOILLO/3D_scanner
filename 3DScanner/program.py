@@ -35,7 +35,7 @@ while True:
 			if motor_step > 125:
 				file.close()
 				if len(cloud_prev):
-					file_transform = open(f"transforms/{scan_num}.txt")
+					file_transform = open("transforms/" + scan_num + ".txt")
 					while len(cloud) < 700:
 						cloud.append([0, 0, 0])
 					file_transform.write(neural.forward(cloud_prev, cloud))
@@ -43,7 +43,7 @@ while True:
 				cloud_prev = cloud
 				cloud = []
 				scan_num += 1
-				file = open(f"scans/{scan_num}.txt")
+				file = open("scans/" + scan_num + ".txt")
 				motor_step = 0
 				#tcp_socket.send(b"STOP\n")
 				print("STOP")
