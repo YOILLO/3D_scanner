@@ -3,7 +3,7 @@ from time import *
 import pyurg
 from math import *
 from GPIO import *
-import Neural
+#import Neural
 
 addr = ("192.168.43.200", 9090)
 
@@ -24,7 +24,7 @@ scan_num = 0
 cloud = []
 cloud_prev = []
 file = open("scans/" + scan_num + ".txt")
-neural = Neural.onnxCNN(200, 700)
+#neural = Neural.onnxCNN(200, 700)
 while True:
 	try:
 		print("Trying connect")
@@ -34,12 +34,12 @@ while True:
 		while True:
 			if motor_step > 125:
 				file.close()
-				if len(cloud_prev):
-					file_transform = open("transforms/" + scan_num + ".txt")
-					while len(cloud) < 700:
-						cloud.append([0, 0, 0])
-					file_transform.write(neural.forward(cloud_prev, cloud))
-					file_transform.close()
+				#if len(cloud_prev):
+					#file_transform = open("transforms/" + scan_num + ".txt")
+					#while len(cloud) < 700:
+						#cloud.append([0, 0, 0])
+					#file_transform.write(neural.forward(cloud_prev, cloud))
+					#file_transform.close()
 				cloud_prev = cloud
 				cloud = []
 				scan_num += 1
