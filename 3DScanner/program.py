@@ -5,7 +5,7 @@ from math import *
 from GPIO import *
 #import Neural
 
-addr = ("192.168.43.200", 9090)
+#addr = ("192.168.43.200", 9090)
 
 GPIO_init()
 
@@ -17,7 +17,7 @@ if not urg.connect():
     print('Could not connect.')
     exit()
 
-tcp_socket.connect(addr)
+#tcp_socket.connect(addr)
 
 motor_step = 0
 scan_num = 0
@@ -28,8 +28,8 @@ file = open("scans/" + scan_num + ".txt")
 while True:
 	try:
 		print("Trying connect")
-		tcp_socket.connect(addr)
-		tcp_socket.recv(1)
+		#tcp_socket.connect(addr)
+		#tcp_socket.recv(1)
 
 		while True:
 			if motor_step > 125:
