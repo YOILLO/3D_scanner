@@ -23,7 +23,7 @@ motor_step = 0
 scan_num = 0
 cloud = []
 cloud_prev = []
-file = open("scans/" + scan_num + ".txt")
+file = open("scans/" + str(scan_num) + ".txt")
 #neural = Neural.onnxCNN(200, 700)
 while True:
 	try:
@@ -44,7 +44,7 @@ while True:
 				cloud_prev = cloud
 				cloud = []
 				scan_num += 1
-				file = open("scans/" + scan_num + ".txt")
+				file = open("scans/" + str(scan_num) + ".txt")
 				motor_step = 0
 				#tcp_socket.send(b"STOP\n")
 				print("STOP")
